@@ -1,5 +1,5 @@
 # WebRTCApp
-https://divyatez-sprinklr.github.io/WebRTC-record/
+https://divyatez-sprinklr.github.io/webRTC-record/
 ### New Terminal
 ```
 cd server
