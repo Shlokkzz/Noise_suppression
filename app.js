@@ -1,4 +1,5 @@
 //import MultiStreamsMixer from './node_modules/multistreamsmixer/MultiStreamsMixer.js'
+// for recording
 
 //////////
 
@@ -255,18 +256,98 @@ function startWebRTC() {
 
   navigator.mediaDevices
     .getUserMedia({
-      audio: {
-        noiseSuppression: true,
-        echoCancellation: true,
-      },
+      audio: true,
       video: true,
     })
     .then(async (stream) => {
-      console.log(stream.getAudioTracks());
+
+      {
+        const AudioContext = (window.AudioContext || window.webkitAudioContext);
+        const audioContext = new AudioContext();
+
+        try {
+          await audioContext.audioWorklet.addModule(
+            "./NoiseSuppressionProcessor.js"
+          );
+          console.log("### node added");
+        } catch (e) {
+          console.log("###", { e });
+          throw e;
+        }
+
+        try {
+          const source = audioContext.createMediaStreamSource(stream);
+
+          console.log("### created source");
+
+          const noiseSuppressionProcessor = new AudioWorkletNode(
+            audioContext,
+            "noise-suppressor-worklet"
+          );
+
+          console.log("### created processor");
+
+          const destination = audioContext.createMediaStreamDestination();
+
+          console.log("### created destination");
+
+          source.connect(noiseSuppressionProcessor);
+
+          console.log("### connected source");
+
+          console.log("### connected processor");
+          // uc
+
+          // noiseSuppressionProcessor.connect(audioContext.destination);
+          // stream.getTracks().forEach((track) => {
+          //   ssStreamTrack.push(connection.addTrack(track, stream));
+          // });
+          // localScreenShare.srcObject = stream;
+
+          // c
+
+          noiseSuppressionProcessor.connect(destination);
+
+          console.log("### connected destination");
+
+          const processedStream = new MediaStream();
+          // audio tracks
+          destination.stream.getAudioTracks().forEach((track) => {
+            processedStream.addTrack(track);
+          });
+          // video tracks
+          stream.getVideoTracks().forEach((track) => {
+            processedStream.addTrack(track);
+          });
+          
+          localVideo.srcObject = processedStream;
+          document.getElementById("sample-video").srcObject = processedStream;
+          processedStream.getTracks().forEach((track) => {
+           connection.addTrack(track, processedStream);
+          });
+        } catch (e) {
+          console.log("### error", JSON.stringify(e));
+        }
+      }
+
+      // localVideo.srcObject = stream;
+      // document.getElementById("sample-video").srcObject = stream;
+      // stream.getTracks().forEach((track) => connection.addTrack(track, stream));
+    }, onError);
+
+  navigator.mediaDevices
+    .getUserMedia({
+      audio: true,
+      video: true,
+    })
+    .then(async (stream) => {
+      //toggleLocalStreamShare();
+      // console.log(stream.getAudioTracks());
       // initRNN();
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      const audioContext = new AudioContext();
       //    const audioContext = new (AudioContext || window.webkitAudioContext)();
+
+      const AudioContext = (window.AudioContext || window.webkitAudioContext);
+      const audioContext = new AudioContext();
 
       try {
         await audioContext.audioWorklet.addModule(
@@ -288,34 +369,68 @@ function startWebRTC() {
           "noise-suppressor-worklet"
         );
 
-        console.log("### created  processor");
+        console.log("### created processor");
+
+        const destination = audioContext.createMediaStreamDestination();
+
+        console.log("### created destination");
 
         source.connect(noiseSuppressionProcessor);
 
         console.log("### connected source");
 
-        noiseSuppressionProcessor.connect(audioContext.destination);
+        
+        console.log("### connected processor");
 
-        console.log("### connected  processor");
+        // comment for self ns
+
+      //  {
+      //    noiseSuppressionProcessor.connect(audioContext.destination);
+      //    stream.getTracks().forEach((track) => {
+      //      ssStreamTrack.push(connection.addTrack(track, stream));
+      //    });
+      //    localScreenShare.srcObject = stream;
+      //  }
+
+
+        // comment
+
+       {
+         noiseSuppressionProcessor.connect(destination);
+
+         console.log("### connected destination");
+
+         const processedStream = new MediaStream();
+
+         // audio tracks
+         destination.stream.getAudioTracks().forEach((track) => {
+           processedStream.addTrack(track);
+         });
+         // video tracks
+         stream.getVideoTracks().forEach((track) => {
+           processedStream.addTrack(track);
+         });
+
+         processedStream.getTracks().forEach((track) => {
+           ssStreamTrack.push(connection.addTrack(track, processedStream));
+          });
+          localScreenShare.srcObject = processedStream;
+       }
+        
+
+
       } catch (e) {
-        console.log("###", JSON.stringify(e));
+        console.log("### error", JSON.stringify(e));
       }
-      localVideo.srcObject = stream;
-      document.getElementById("sample-video").srcObject = stream;
-      stream.getTracks().forEach((track) => connection.addTrack(track, stream));
-    }, onError);
+      
 
-  navigator.mediaDevices
-    .getUserMedia({
-      audio: true,
-      video: true,
-    })
-    .then(async (stream) => {
-      //toggleLocalStreamShare();
-      stream.getTracks().forEach((track) => {
-        ssStreamTrack.push(connection.addTrack(track, stream));
-      });
-      localScreenShare.srcObject = stream;
+
+
+
+
+      // original
+      // stream.getTracks().forEach(track => {ssStreamTrack.push(connection.addTrack(track, stream));})
+      //   localScreenShare.srcObject = stream;
     }, onError);
 
   document

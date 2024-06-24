@@ -1,6 +1,5 @@
 /* eslint-disable no-bitwise */
 
-
 /**
  * Constant. Rnnoise default sample size, samples of different size won't work.
  */
@@ -172,7 +171,7 @@ export default class RnnoiseProcessor {
         if (shouldDenoise) {
             // Convert back to 32 bit PCM
             for (let i = 0; i < RNNOISE_SAMPLE_LENGTH; i++) {
-                if(vadScore<0.9){
+                if(vadScore<0.85){
                     pcmFrame[i]=0;
                 }
                 else{

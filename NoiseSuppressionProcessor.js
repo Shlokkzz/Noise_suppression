@@ -63,85 +63,63 @@ class NoiseSuppressorWorklet extends AudioWorkletProcessor {
   // }
 
   process(inputs, outputs, parameters) {
-    // if (!this._rnnoise || !this._denoiseState) return true;
-
-    // const input = inputs[0];
-    // const output = outputs[0];
-
-    // for (let channel = 0; channel < input.length; ++channel) {
-    //   const floatFrame = new Float32Array(input[channel]);
-    //   this._rnnoise?.processFrame(this._denoiseState, floatFrame);
-    //   output[channel].set(floatFrame);
-    // }
-
-    // console.log("INPUTS ",inputs)
-    // console.log("OUTPUTS ",outputs)
     const inData = inputs[0][0];
     const outData = outputs[0][0];
-
-    // console.log("IN DATA-1 ",inData);
 
     if (!inData) {
       return true;
     }
 
-    // buffering and processing logic
-
+    // Buffer the incoming data
     this._circularBuffer.set(inData, this._inputBufferLength);
     this._inputBufferLength += inData.length;
 
-    for (
-      ;
-      this._denoisedBufferLength + this._denoiseSampleSize <=
-      this._inputBufferLength;
-      this._denoisedBufferLength += this._denoiseSampleSize
-    ) {
+    // Process the buffered data in chunks of _denoiseSampleSize
+    while (this._denoisedBufferLength + this._denoiseSampleSize <= this._inputBufferLength) {
       const denoiseFrame = this._circularBuffer.subarray(
         this._denoisedBufferLength,
         this._denoisedBufferLength + this._denoiseSampleSize
       );
 
-      let vadScore=this._denoiseProcessor.processAudioFrame(denoiseFrame, true);
+      let vadScore = this._denoiseProcessor.processAudioFrame(denoiseFrame, true);
 
-      if(vadScore>=0.9){
-        console.log("VOICE DETECTED SCORE:",vadScore);
+      if (vadScore >= 0.85) {
+        console.log("VOICE DETECTED SCORE:", vadScore);
+      } else {
+        // Logic to suppress audio if needed
       }
-      // else suppress basically
+
+      this._denoisedBufferLength += this._denoiseSampleSize;
     }
 
+    // Determine the length of unsent denoised data
     let unsentDenoisedDataLength;
-
     if (this._denoisedBufferIndx > this._denoisedBufferLength) {
-      unsentDenoisedDataLength =
-        this._circularBufferLength - this._denoisedBufferIndx;
+      unsentDenoisedDataLength = this._circularBufferLength - this._denoisedBufferIndx;
     } else {
-      unsentDenoisedDataLength =
-        this._denoisedBufferLength - this._denoisedBufferIndx;
+      unsentDenoisedDataLength = this._denoisedBufferLength - this._denoisedBufferIndx;
     }
 
+    // If we have enough denoised data to fill the output buffer, send it
     if (unsentDenoisedDataLength >= outData.length) {
       const denoisedFrame = this._circularBuffer.subarray(
         this._denoisedBufferIndx,
         this._denoisedBufferIndx + outData.length
       );
-
       outData.set(denoisedFrame, 0);
       this._denoisedBufferIndx += outData.length;
     }
 
+    // Wrap around the buffer index if needed
     if (this._denoisedBufferIndx === this._circularBufferLength) {
       this._denoisedBufferIndx = 0;
     }
 
+    // Reset buffer indices if the entire buffer has been processed
     if (this._inputBufferLength === this._circularBufferLength) {
       this._inputBufferLength = 0;
       this._denoisedBufferLength = 0;
     }
-    // console.log("DONE");
-    //   console.log("INPUTS-2 ",inputs)
-    //   console.log("OUTPUTS-2 ",outputs)
-    // console.log("OUT DATA-2 ",outData);
-
 
     return true;
   }
