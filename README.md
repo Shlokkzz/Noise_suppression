@@ -1,5 +1,5 @@
 # WebRTCApp
-https://divyatez-sprinklr.github.io/webRTC-record/
+https://shlokkzz.github.io/Noise_suppression/
 ### New Terminal
 ```
 cd server
